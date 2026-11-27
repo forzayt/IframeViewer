@@ -278,22 +278,15 @@ body {
 }
 .remove-btn:hover { color: var(--danger); background: rgba(224,92,110,.12); }
 
-/* Card preview (iframe wrapper) */
+/* Card preview (iframe wrapper) — height set via inline style from JS */
 .card-preview {
   position: relative;
   flex: 1;
-  height: 200px;
+  min-height: 120px;
   background: var(--surface2);
   overflow: hidden;
 }
-.card-preview iframe {
-  width: 200%;
-  height: 200%;
-  transform: scale(.5);
-  transform-origin: 0 0;
-  pointer-events: none;
-  border: none;
-}
+/* iframe style is applied inline so it scales with the card size */
 .card-loading, .card-error {
   position: absolute;
   inset: 0;
@@ -485,6 +478,7 @@ body {
 @media (max-width: 600px) {
   .header-inner { flex-direction: column; align-items: stretch; }
   .input-row { flex-direction: column; }
-  .grid { grid-template-columns: 1fr; }
+  /* On mobile the flex-wrap grid already stacks naturally */
+  .grid { justify-content: center; }
   .modal { height: 95vh; border-radius: 12px; }
 }
