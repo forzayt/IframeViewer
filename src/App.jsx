@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import IframeCard from './components/IframeCard'
 import './App.css'
 
-const STORAGE_KEY = 'iframeviewer_cards'
+const STORAGE_KEY  = 'iframeviewer_cards'
+const TTL_KEY      = 'iframeviewer_cards_savedAt'
 const DEFAULT_SIZE = { w: 320, h: 260 }
+const TTL_MS       = 24 * 60 * 60 * 1000  // 24 hours
 
 function normalizeUrl(raw) {
   const trimmed = raw.trim()
@@ -12,9 +14,17 @@ function normalizeUrl(raw) {
   return 'https://' + trimmed
 }
 
-// Ensure legacy saved cards get a default size
-function hydrate(raw) {
+// Load plain [{id,url,...}] array; wipe both keys if older than 24 h
+function loadCards() {
   try {
+    const savedAt = localStorage.getItem(TTL_KEY)
+    if (savedAt && Date.now() - parseInt(savedAt, 10) > TTL_MS) {
+      localStorage.removeItem(STORAGE_KEY)
+      localStorage.removeItem(TTL_KEY)
+      return []
+    }
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return []
     const arr = JSON.parse(raw)
     return Array.isArray(arr)
       ? arr.map(c => ({ ...c, size: c.size ?? DEFAULT_SIZE }))
@@ -24,20 +34,25 @@ function hydrate(raw) {
   }
 }
 
+// Save plain array; stamp TTL_KEY only once (tracks session start, not last-write)
+function saveCards(cards) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cards))
+  if (!localStorage.getItem(TTL_KEY)) {
+    localStorage.setItem(TTL_KEY, Date.now().toString())
+  }
+}
+
 function App() {
   const [inputValue, setInputValue] = useState('')
-  const [cards, setCards] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? hydrate(saved) : []
-  })
+  const [cards, setCards] = useState(() => loadCards())
 
   // Drag-drop state (kept in refs to avoid re-renders mid-drag)
   const dragId   = useRef(null)
   const [overId, setOverId] = useState(null)
 
-  // Persist cards (order + sizes) to localStorage on every change
+  // Persist plain array; TTL_KEY stamped once on first save
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards))
+    saveCards(cards)
   }, [cards])
 
   /* ── CRUD ── */
