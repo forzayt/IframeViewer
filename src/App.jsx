@@ -1,6 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import IframeCard from './components/IframeCard'
 import './App.css'
+
+const STORAGE_KEY = 'iframeviewer_cards'
 
 function normalizeUrl(raw) {
   const trimmed = raw.trim()
@@ -11,7 +13,19 @@ function normalizeUrl(raw) {
 
 function App() {
   const [inputValue, setInputValue] = useState('')
-  const [cards, setCards] = useState([])
+  const [cards, setCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  // Persist cards to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards))
+  }, [cards])
 
   const handleAdd = useCallback(() => {
     const url = normalizeUrl(inputValue)
