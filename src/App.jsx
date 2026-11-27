@@ -54,6 +54,10 @@ function App() {
     setCards(prev => prev.filter(c => c.id !== id))
   }, [])
 
+  const handleResetPositions = useCallback(() => {
+    setCards(prev => prev.map(c => ({ ...c, size: DEFAULT_SIZE })))
+  }, [])
+
   /* ── Resize: lifted so size is stored in cards array ── */
   const handleResize = useCallback((id, size) => {
     setCards(prev => prev.map(c => c.id === id ? { ...c, size } : c))
@@ -110,6 +114,11 @@ function App() {
             <button className="add-btn" onClick={handleAdd}>
               <span className="add-icon">+</span> Add
             </button>
+            {cards.length > 0 && (
+              <button className="reset-btn" onClick={handleResetPositions} title="Reset all card sizes to default">
+                ↺ Reset
+              </button>
+            )}
           </div>
         </div>
       </header>

@@ -122,6 +122,27 @@ body {
 .add-btn:active { transform: translateY(0); }
 .add-icon { font-size: 1.1rem; line-height: 1; }
 
+.reset-btn {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: .6rem 1rem;
+  font-size: .9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+.reset-btn:hover {
+  color: var(--text);
+  border-color: var(--muted);
+  background: var(--surface2);
+}
+
 /* ===================== MAIN ===================== */
 .main {
   flex: 1;
