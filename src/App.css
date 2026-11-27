@@ -202,6 +202,20 @@ body {
   user-select: none;
 }
 
+/* Dragging: ghost stays but card fades out */
+.card--dragging {
+  opacity: .35;
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+/* Drop target: pulse ring */
+.card--drag-over {
+  border-color: var(--accent);
+  box-shadow: var(--shadow), 0 0 0 2px var(--accent), 0 0 18px rgba(124,107,248,.3);
+  transform: scale(1.015);
+}
+
 /* ===================== RESIZE HANDLES ===================== */
 .resize-handle {
   position: absolute;
@@ -255,6 +269,23 @@ body {
   background: var(--surface2);
   border-bottom: 1px solid var(--border);
 }
+
+/* Drag grip */
+.drag-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  cursor: grab;
+  padding: .1rem .2rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity var(--transition), color var(--transition), background var(--transition);
+}
+.card:hover .drag-grip { opacity: 1; }
+.drag-grip:hover { color: var(--accent); background: rgba(124,107,248,.1); }
+.drag-grip:active { cursor: grabbing; }
 .favicon { width: 16px; height: 16px; border-radius: 2px; flex-shrink: 0; }
 .card-host {
   flex: 1;

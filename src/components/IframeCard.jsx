@@ -2,54 +2,67 @@ import { useState, useRef, useCallback } from 'react'
 
 const MIN_W = 260
 const MIN_H = 200
-const DEFAULT_W = 320
-const DEFAULT_H = 260
 
 function getFavicon(url) {
   try {
     const { hostname } = new URL(url)
     return `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
 function getHostname(url) {
-  try {
-    return new URL(url).hostname.replace('www.', '')
-  } catch {
-    return url
-  }
+  try { return new URL(url).hostname.replace('www.', '') }
+  catch { return url }
 }
 
-export default function IframeCard({ card, onRemove }) {
-  const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState(false)
-  const [size, setSize] = useState({ w: DEFAULT_W, h: DEFAULT_H })
+export default function IframeCard({
+  card,
+  onRemove,
+  onResize,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  isDragging,
+  isOver,
+}) {
+  const [loaded, setLoaded]   = useState(false)
+  const [error, setError]     = useState(false)
   const [resizing, setResizing] = useState(false)
   const cardRef = useRef(null)
-  const favicon = getFavicon(card.url)
+
+  const { size } = card          // { w, h } lives in App state
+  const favicon  = getFavicon(card.url)
   const hostname = getHostname(card.url)
 
-  /* ---- Resize via bottom-right corner (mouse + touch) ---- */
-  const startResize = useCallback((e) => {
+  /* ── Generic corner resize factory ── */
+  const makeResizeHandler = useCallback((corner) => (e) => {
     e.preventDefault()
     e.stopPropagation()
 
     const isTouch = e.type === 'touchstart'
-    const startX = isTouch ? e.touches[0].clientX : e.clientX
-    const startY = isTouch ? e.touches[0].clientY : e.clientY
-    const startW = cardRef.current?.offsetWidth  ?? size.w
-    const startH = cardRef.current?.offsetHeight ?? size.h
+    const startX  = isTouch ? e.touches[0].clientX : e.clientX
+    const startY  = isTouch ? e.touches[0].clientY : e.clientY
+    const startW  = cardRef.current?.offsetWidth  ?? size.w
+    const startH  = cardRef.current?.offsetHeight ?? size.h
 
     setResizing(true)
 
     const onMove = (ev) => {
       const cx = isTouch ? ev.touches[0].clientX : ev.clientX
       const cy = isTouch ? ev.touches[0].clientY : ev.clientY
-      setSize({
-        w: Math.max(MIN_W, startW + cx - startX),
-        h: Math.max(MIN_H, startH + cy - startY),
+      const dx = cx - startX
+      const dy = cy - startY
+
+      let newW = startW, newH = startH
+      if (corner.includes('e')) newW = startW + dx
+      if (corner.includes('w')) newW = startW - dx
+      if (corner.includes('s')) newH = startH + dy
+      if (corner.includes('n')) newH = startH - dy
+
+      onResize(card.id, {
+        w: Math.max(MIN_W, newW),
+        h: Math.max(MIN_H, newH),
       })
     }
 
@@ -68,20 +81,51 @@ export default function IframeCard({ card, onRemove }) {
       window.addEventListener('mousemove', onMove)
       window.addEventListener('mouseup',   onUp)
     }
-  }, [size.w, size.h])
+  }, [card.id, size.w, size.h, onResize])
 
-  /* iframe is scaled 2× so it renders a full desktop viewport in a small box */
-  const previewH = size.h - 72 /* subtract bar + footer heights */
+  const previewH = size.h - 72  // card height minus bar + footer
+
+  /* ── Class list ── */
+  const cls = [
+    'card',
+    resizing  ? 'card--resizing'  : '',
+    isDragging ? 'card--dragging'  : '',
+    isOver     ? 'card--drag-over' : '',
+  ].filter(Boolean).join(' ')
 
   return (
     <div
       ref={cardRef}
-      className={`card${resizing ? ' card--resizing' : ''}`}
+      className={cls}
       style={{ width: size.w, height: size.h }}
-      title="Drag a corner to resize"
+      onDragOver={(e) => { e.preventDefault(); onDragOver(card.id) }}
+      onDrop={(e)     => { e.preventDefault(); onDrop(card.id) }}
+      onDragEnd={onDragEnd}
     >
-      {/* ── Top bar ── */}
+      {/* ── Top bar (drag handle lives here) ── */}
       <div className="card-bar">
+        {/* Grip — only this element initiates drag */}
+        <div
+          className="drag-grip"
+          draggable="true"
+          onDragStart={(e) => {
+            e.stopPropagation()
+            // ghost image
+            e.dataTransfer.effectAllowed = 'move'
+            onDragStart(card.id)
+          }}
+          title="Drag to reorder"
+        >
+          <svg width="12" height="16" viewBox="0 0 12 16" fill="currentColor">
+            <circle cx="4" cy="3"  r="1.4"/>
+            <circle cx="8" cy="3"  r="1.4"/>
+            <circle cx="4" cy="8"  r="1.4"/>
+            <circle cx="8" cy="8"  r="1.4"/>
+            <circle cx="4" cy="13" r="1.4"/>
+            <circle cx="8" cy="13" r="1.4"/>
+          </svg>
+        </div>
+
         {favicon && <img className="favicon" src={favicon} alt="" />}
         <span className="card-host">{hostname}</span>
         <button
@@ -111,12 +155,9 @@ export default function IframeCard({ card, onRemove }) {
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
             loading="lazy"
             style={{
-              width:  '200%',
-              height: '200%',
-              transform: 'scale(0.5)',
-              transformOrigin: '0 0',
-              pointerEvents: 'none',
-              border: 'none',
+              width: '200%', height: '200%',
+              transform: 'scale(0.5)', transformOrigin: '0 0',
+              pointerEvents: 'none', border: 'none',
             }}
           />
         )}
@@ -127,115 +168,27 @@ export default function IframeCard({ card, onRemove }) {
         <span className="card-label">{card.label}</span>
       </div>
 
-      {/* ── Resize handles ── */}
-      {/* Bottom-right */}
-      <div
-        className="resize-handle resize-handle--se"
-        onMouseDown={startResize}
-        onTouchStart={startResize}
-        title="Drag to resize"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M1 9L9 1M5 9L9 5M9 9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </div>
+      {/* ── 4-corner resize handles ── */}
+      {['se','sw','ne','nw'].map(corner => (
+        <div
+          key={corner}
+          className={`resize-handle resize-handle--${corner}`}
+          onMouseDown={makeResizeHandler(corner)}
+          onTouchStart={makeResizeHandler(corner)}
+          title="Drag to resize"
+        >
+          <svg
+            width="10" height="10" viewBox="0 0 10 10" fill="none"
+            style={{
+              transform: { se:'none', sw:'scaleX(-1)', ne:'rotate(-90deg)', nw:'rotate(180deg)' }[corner]
+            }}
+          >
+            <path d="M1 9L9 1M5 9L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+      ))}
 
-      {/* Bottom-left */}
-      <div
-        className="resize-handle resize-handle--sw"
-        onMouseDown={(e) => {
-          e.preventDefault(); e.stopPropagation()
-          const startX = e.clientX
-          const startW = cardRef.current?.offsetWidth ?? size.w
-          const startH = cardRef.current?.offsetHeight ?? size.h
-          const startY = e.clientY
-          setResizing(true)
-          const onMove = (ev) => {
-            const dx = ev.clientX - startX
-            const dy = ev.clientY - startY
-            setSize({
-              w: Math.max(MIN_W, startW - dx),
-              h: Math.max(MIN_H, startH + dy),
-            })
-          }
-          const onUp = () => {
-            setResizing(false)
-            window.removeEventListener('mousemove', onMove)
-            window.removeEventListener('mouseup', onUp)
-          }
-          window.addEventListener('mousemove', onMove)
-          window.addEventListener('mouseup', onUp)
-        }}
-        title="Drag to resize"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: 'scaleX(-1)' }}>
-          <path d="M1 9L9 1M5 9L9 5M9 9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </div>
-
-      {/* Top-right */}
-      <div
-        className="resize-handle resize-handle--ne"
-        onMouseDown={(e) => {
-          e.preventDefault(); e.stopPropagation()
-          const startX = e.clientX
-          const startY = e.clientY
-          const startW = cardRef.current?.offsetWidth ?? size.w
-          const startH = cardRef.current?.offsetHeight ?? size.h
-          setResizing(true)
-          const onMove = (ev) => {
-            setSize({
-              w: Math.max(MIN_W, startW + ev.clientX - startX),
-              h: Math.max(MIN_H, startH - (ev.clientY - startY)),
-            })
-          }
-          const onUp = () => {
-            setResizing(false)
-            window.removeEventListener('mousemove', onMove)
-            window.removeEventListener('mouseup', onUp)
-          }
-          window.addEventListener('mousemove', onMove)
-          window.addEventListener('mouseup', onUp)
-        }}
-        title="Drag to resize"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: 'rotate(-90deg)' }}>
-          <path d="M1 9L9 1M5 9L9 5M9 9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </div>
-
-      {/* Top-left */}
-      <div
-        className="resize-handle resize-handle--nw"
-        onMouseDown={(e) => {
-          e.preventDefault(); e.stopPropagation()
-          const startX = e.clientX
-          const startY = e.clientY
-          const startW = cardRef.current?.offsetWidth ?? size.w
-          const startH = cardRef.current?.offsetHeight ?? size.h
-          setResizing(true)
-          const onMove = (ev) => {
-            setSize({
-              w: Math.max(MIN_W, startW - (ev.clientX - startX)),
-              h: Math.max(MIN_H, startH - (ev.clientY - startY)),
-            })
-          }
-          const onUp = () => {
-            setResizing(false)
-            window.removeEventListener('mousemove', onMove)
-            window.removeEventListener('mouseup', onUp)
-          }
-          window.addEventListener('mousemove', onMove)
-          window.addEventListener('mouseup', onUp)
-        }}
-        title="Drag to resize"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ transform: 'rotate(180deg)' }}>
-          <path d="M1 9L9 1M5 9L9 5M9 9V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
-      </div>
-
-      {/* Size badge shown while resizing */}
+      {/* ── Size badge while resizing ── */}
       {resizing && (
         <div className="size-badge">{Math.round(size.w)} × {Math.round(size.h)}</div>
       )}
