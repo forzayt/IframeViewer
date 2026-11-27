@@ -22,7 +22,7 @@ function getHostname(url) {
   }
 }
 
-export default function IframeCard({ card, onClick, onRemove }) {
+export default function IframeCard({ card, onRemove }) {
   const [loaded, setLoaded] = useState(false)
   const [error, setError] = useState(false)
   const [size, setSize] = useState({ w: DEFAULT_W, h: DEFAULT_H })
@@ -78,8 +78,7 @@ export default function IframeCard({ card, onClick, onRemove }) {
       ref={cardRef}
       className={`card${resizing ? ' card--resizing' : ''}`}
       style={{ width: size.w, height: size.h }}
-      onClick={!resizing ? onClick : undefined}
-      title="Click to enlarge"
+      title="Drag a corner to resize"
     >
       {/* ── Top bar ── */}
       <div className="card-bar">
@@ -126,7 +125,6 @@ export default function IframeCard({ card, onClick, onRemove }) {
       {/* ── Footer ── */}
       <div className="card-footer">
         <span className="card-label">{card.label}</span>
-        <span className="expand-hint">⤢ Click to expand</span>
       </div>
 
       {/* ── Resize handles ── */}

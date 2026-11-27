@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import IframeCard from './components/IframeCard'
-import Modal from './components/Modal'
 import './App.css'
 
 function normalizeUrl(raw) {
@@ -13,7 +12,6 @@ function normalizeUrl(raw) {
 function App() {
   const [inputValue, setInputValue] = useState('')
   const [cards, setCards] = useState([])
-  const [activeCard, setActiveCard] = useState(null)
 
   const handleAdd = useCallback(() => {
     const url = normalizeUrl(inputValue)
@@ -29,7 +27,6 @@ function App() {
 
   const handleRemove = useCallback((id) => {
     setCards(prev => prev.filter(c => c.id !== id))
-    setActiveCard(prev => (prev?.id === id ? null : prev))
   }, [])
 
   return (
@@ -71,18 +68,12 @@ function App() {
               <IframeCard
                 key={card.id}
                 card={card}
-                onClick={() => setActiveCard(card)}
                 onRemove={handleRemove}
               />
             ))}
           </div>
         )}
       </main>
-
-      {/* Enlarged modal */}
-      {activeCard && (
-        <Modal card={activeCard} onClose={() => setActiveCard(null)} />
-      )}
     </div>
   )
 }
